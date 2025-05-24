@@ -129,13 +129,13 @@ _✨ 通过标准的 OpenAI API 格式访问所有的大模型，开箱即用 �
 ### 基于 Docker 进行部署
 ```shell
 # 使用 SQLite 的部署命令：
-docker run --name one-api -d --restart always -p 3000:3000 -e TZ=Asia/Shanghai -v /home/ubuntu/data/one-api:/data justsong/one-api
+docker run --name one-api -d --restart always -p 12018:12018 -e TZ=Asia/Shanghai -v /home/ubuntu/data/one-api:/data justsong/one-api
 # 使用 MySQL 的部署命令，在上面的基础上添加 `-e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi"`，请自行修改数据库连接参数，不清楚如何修改请参见下面环境变量一节。
 # 例如：
-docker run --name one-api -d --restart always -p 3000:3000 -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" -e TZ=Asia/Shanghai -v /home/ubuntu/data/one-api:/data justsong/one-api
+docker run --name one-api -d --restart always -p 12018:12018 -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" -e TZ=Asia/Shanghai -v /home/ubuntu/data/one-api:/data justsong/one-api
 ```
 
-其中，`-p 3000:3000` 中的第一个 `3000` 是宿主机的端口，可以根据需要进行修改。
+其中，`-p 12018:12018` 中的第一个 `12018` 是宿主机的端口，可以根据需要进行修改。
 
 数据和日志将会保存在宿主机的 `/home/ubuntu/data/one-api` 目录，请确保该目录存在且具有写入权限，或者更改为合适的目录。
 
@@ -155,7 +155,7 @@ server{
    location / {
           client_max_body_size  64m;
           proxy_http_version 1.1;
-          proxy_pass http://localhost:3000;  # 请根据实际情况修改你的端口
+          proxy_pass http://localhost:12018;  # 请根据实际情况修改你的端口
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $remote_addr;
           proxy_cache_bypass $http_upgrade;
@@ -214,11 +214,32 @@ docker-compose ps
 2. 运行：
    ```shell
    chmod u+x one-api
-   ./one-api --port 3000 --log-dir ./logs
+   ./one-api --port 12018 --log-dir ./logs
    ```
-3. 访问 [http://localhost:3000/](http://localhost:3000/) 并登录。初始账号用户名为 `root`，密码为 `123456`。
+3. 访问 [http://localhost:12018/](http://localhost:12018/) 并登录。初始账号用户名为 `root`，密码为 `123456`。
 
 更加详细的部署教程[参见此处](https://iamazing.cn/page/how-to-deploy-a-website)。
+
+### 手动部署到本地docker
+1. build 镜像
+   ```shell
+      docker build -f Dockerfile -t one-api-image .
+   ```
+2. 启动镜像，这里可以不需要设置挂在目录
+   ```shell
+   docker run --name one-api -d --restart always -p 12018:12018 -e TZ=Asia/Shanghai one-api-image
+   ```
+3. 测试API key是否可以使用，首先登陆后添加令牌
+   ```shell
+   curl http://127.0.0.1:12018/v1/chat/completions \
+      -H "Authorization: Bearer sk-获取的令牌key" \
+      -H "Content-Type: application/json" \
+      -k \
+      -d '{
+            "model": "claude-3-7-sonnet-20250219",
+            "messages": [{"role": "user", "content": "Hello!"}]
+         }'
+   ```
 
 ### 多机部署
 1. 所有服务器 `SESSION_SECRET` 设置一样的值。
@@ -244,7 +265,7 @@ docker-compose ps
 项目主页：https://github.com/Yidadaa/ChatGPT-Next-Web
 
 ```bash
-docker run --name chat-next-web -d -p 3001:3000 yidadaa/chatgpt-next-web
+docker run --name chat-next-web -d -p 3001:12018 yidadaa/chatgpt-next-web
 ```
 
 注意修改端口号，之后在页面上设置接口地址（例如：https://openai.justsong.cn/ ）和 API Key 即可。
@@ -292,7 +313,7 @@ docker run --name chatgpt-web -d -p 3002:3002 -e OPENAI_API_BASE_URL=https://ope
 3. 新建一个 Project，在 Service -> Add Service 选择 Marketplace，选择 MySQL，并记下连接参数（用户名、密码、地址、端口）。
 4. 复制链接参数，运行 ```create database `one-api` ``` 创建数据库。
 5. 然后在 Service -> Add Service，选择 Git（第一次使用需要先授权），选择你 fork 的仓库。
-6. Deploy 会自动开始，先取消。进入下方 Variable，添加一个 `PORT`，值为 `3000`，再添加一个 `SQL_DSN`，值为 `<username>:<password>@tcp(<addr>:<port>)/one-api` ，然后保存。 注意如果不填写 `SQL_DSN`，数据将无法持久化，重新部署后数据会丢失。
+6. Deploy 会自动开始，先取消。进入下方 Variable，添加一个 `PORT`，值为 `12018`，再添加一个 `SQL_DSN`，值为 `<username>:<password>@tcp(<addr>:<port>)/one-api` ，然后保存。 注意如果不填写 `SQL_DSN`，数据将无法持久化，重新部署后数据会丢失。
 7. 选择 Redeploy。
 8. 进入下方 Domains，选择一个合适的域名前缀，如 "my-one-api"，最终域名为 "my-one-api.zeabur.app"，也可以 CNAME 自己的域名。
 9. 等待部署完成，点击生成的域名进入 One API。
@@ -404,7 +425,7 @@ graph LR
 17. `RELAY_PROXY`：设置后使用该代理来请求 API。
 18. `USER_CONTENT_REQUEST_TIMEOUT`：用户上传内容下载超时时间，单位为秒。
 19. `USER_CONTENT_REQUEST_PROXY`：设置后使用该代理来请求用户上传的内容，例如图片。
-20. `SQLITE_BUSY_TIMEOUT`：SQLite 锁等待超时设置，单位为毫秒，默认 `3000`。
+20. `SQLITE_BUSY_TIMEOUT`：SQLite 锁等待超时设置，单位为毫秒，默认 `12018`。
 21. `GEMINI_SAFETY_SETTING`：Gemini 的安全设置，默认 `BLOCK_NONE`。
 22. `GEMINI_VERSION`：One API 所使用的 Gemini 版本，默认为 `v1`。
 23. `THEME`：系统的主题设置，默认为 `default`，具体可选值参考[此处](./web/README.md)。
@@ -417,8 +438,8 @@ graph LR
 30. `TEST_PROMPT`：测试模型时的用户 prompt，默认为 `Print your model name exactly and do not output without any other text.`。
 
 ### 命令行参数
-1. `--port <port_number>`: 指定服务器监听的端口号，默认为 `3000`。
-   + 例子：`--port 3000`
+1. `--port <port_number>`: 指定服务器监听的端口号，默认为 `12018`。
+   + 例子：`--port 12018`
 2. `--log-dir <log_dir>`: 指定日志文件夹，如果没有设置，默认保存至工作目录的 `logs` 文件夹下。
    + 例子：`--log-dir ./logs`
 3. `--version`: 打印系统版本号并退出。

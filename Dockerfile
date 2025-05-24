@@ -29,6 +29,7 @@ ENV GO111MODULE=on \
 WORKDIR /build
 
 ADD go.mod go.sum ./
+ENV GOPROXY=https://goproxy.cn,direct
 RUN go mod download
 
 COPY . .
@@ -42,6 +43,6 @@ RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder2 /build/one-api /
 
-EXPOSE 3000
+EXPOSE 12018
 WORKDIR /data
 ENTRYPOINT ["/one-api"]
